@@ -1,0 +1,360 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>부산대병원 사회복무요원 휴가 달력</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      text-align: center;
+      margin: 0;
+      padding: 0;
+      background-color: #f8f8f8;
+    }
+
+    .calendar {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      gap: 5px;
+      margin: 10px;
+    }
+
+    .day {
+      position: relative;
+      padding: 10px;
+      border: 1px solid #ddd;
+      cursor: pointer;
+      text-align: center;
+      border-width: 4px;
+      margin: 0;
+      font-size: 14px;
+    }
+
+    .day:hover {
+      background-color: #f5f5f5;
+    }
+
+    #calendar > .day {
+      height: 40px;
+    }
+
+    #calendar > .day:nth-child(n + 8) {
+      height: 100px;
+    }
+
+    .has-vacation {
+      background-color: #BEDFDB;
+    }
+
+    .saturday {
+      background-color: #82B1FF;
+    }
+
+    .sunday {
+      background-color: #FF5252;
+    }
+
+    .vacation-text {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      color: #333;
+      font-size: 12px;
+      white-space: nowrap;
+    }
+
+    .today {
+      border: 4px solid #000000;
+    }
+
+    #vacation-list {
+      margin-top: 20px;
+      padding: 10px;
+      text-align: left;
+    }
+
+    #employee-dropdown {
+      margin-top: 20px;
+      padding: 10px;
+      text-align: left;
+    }
+
+    #header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 10px;
+      padding: 10px;
+      background-color: #4CAF50;
+      color: white;
+    }
+
+    .btn-group {
+      display: flex;
+      gap: 10px;
+    }
+
+    @media screen and (max-width: 600px) {
+      .day {
+        font-size: 12px;
+        padding: 5px;
+      }
+
+      #calendar > .day {
+        height: 30px;
+      }
+
+      #calendar > .day:nth-child(n + 8) {
+        height: 80px;
+      }
+
+      /* 추가된 부분 */
+      .calendar {
+        margin: 5px;
+      }
+
+      #vacation-list,
+      #employee-dropdown {
+        padding: 5px;
+      }
+
+      #header {
+        padding: 5px;
+      }
+    }
+  </style>
+</head>
+<body>
+
+
+<div id="header">
+  <button onclick="prevMonth()">◁</button>
+  <h1 id="month-year"></h1>
+  <button onclick="nextMonth()">▷</button>
+</div>
+
+<div id="calendar" class="calendar"></div>
+<div id="vacation-list"></div>
+<div id="employee-dropdown"></div>
+
+<script>
+  let currentYear, currentMonth;
+
+  function createCalendar(year, month) {
+    const calendarElement = document.getElementById('calendar');
+    calendarElement.innerHTML = '';
+
+    const currentDate = new Date();
+    const currentDay = currentDate.getDate();
+
+    const firstDay = new Date(year, month, 1);
+    const lastDay = new Date(year, month + 1, 0);
+    const daysInMonth = lastDay.getDate();
+
+    const startDayOfWeek = firstDay.getDay();
+
+    const header = document.createElement('div');
+    header.classList.add('day');
+    header.textContent = '일';
+    calendarElement.appendChild(header);
+
+    for (let i = 0; i < 6; i++) {
+      const header = document.createElement('div');
+      header.classList.add('day');
+      header.textContent = ['월', '화', '수', '목', '금', '토', '일'][i];
+      calendarElement.appendChild(header);
+    }
+
+    for (let i = 0; i < startDayOfWeek; i++) {
+      const emptyDay = document.createElement('div');
+      emptyDay.classList.add('day', 'empty');
+      calendarElement.appendChild(emptyDay);
+    }
+
+    for (let day = 1; day <= daysInMonth; day++) {
+      const date = new Date(year, month, day);
+      const dayElement = document.createElement('div');
+      dayElement.classList.add('day');
+
+      if (date.getDay() === 6) {
+        dayElement.classList.add('saturday');
+      } else if (date.getDay() === 0) {
+        dayElement.classList.add('sunday');
+      }
+
+      if (day === currentDay && year === currentDate.getFullYear() && month === currentDate.getMonth()) {
+        dayElement.classList.add('today');
+      }
+
+      dayElement.textContent = day;
+      dayElement.addEventListener('click', () => showVacationList(date));
+      calendarElement.appendChild(dayElement);
+
+      if (hasVacation(date)) {
+        dayElement.classList.add('has-vacation');
+        displayVacationText(dayElement, date);
+      }
+    }
+  }
+
+  function displayVacationText(dayElement, date) {
+    const vacationData = getVacationData(date);
+
+    if (vacationData.length > 0) {
+      const vacationText = document.createElement('div');
+      vacationText.classList.add('vacation-text');
+
+      vacationData.forEach(item => {
+        const vacationItem = document.createElement('div');
+        vacationItem.textContent = `${item.employee} - ${item.type}`;
+        vacationText.appendChild(vacationItem);
+      });
+
+      dayElement.appendChild(vacationText);
+    }
+  }
+
+  function hasVacation(date) {
+    const vacations = getVacationData(date);
+    return vacations.length > 0;
+  }
+
+  function showVacationList(date) {
+    const vacationListElement = document.getElementById('vacation-list');
+    vacationListElement.innerHTML = '';
+
+    const header = document.createElement('h2');
+    header.textContent = `${date.getFullYear()}년 ${String(date.getMonth() + 1).padStart(2, '0')}월 ${String(date.getDate()).padStart(2, '0')}일 휴가 목록`;
+    vacationListElement.appendChild(header);
+
+    const vacationData = getVacationData(date);
+
+    if (vacationData.length > 0) {
+      const list = document.createElement('ul');
+      vacationData.forEach((item, index) => {
+        const listItem = document.createElement('li');
+        listItem.textContent = `${item.employee} - ${item.type}`;
+        list.appendChild(listItem);
+
+        const deleteButton = document.createElement('button');
+        deleteButton.textContent = '삭제';
+        deleteButton.addEventListener('click', () => deleteVacation(date, index));
+        listItem.appendChild(deleteButton);
+      });
+
+      vacationListElement.appendChild(list);
+    } else {
+      const message = document.createElement('p');
+      message.textContent = '이 날은 휴가가 없습니다.';
+      vacationListElement.appendChild(message);
+    }
+
+    const employeeDropdown = createEmployeeDropdown();
+    const vacationTypeDropdown = createVacationTypeDropdown();
+    const addButton = document.createElement('button');
+    addButton.textContent = '휴가 추가';
+    addButton.addEventListener('click', () => addVacationWithDropdown(date, employeeDropdown, vacationTypeDropdown));
+    document.getElementById('employee-dropdown').innerHTML = '';
+    document.getElementById('employee-dropdown').appendChild(employeeDropdown);
+    document.getElementById('employee-dropdown').appendChild(vacationTypeDropdown);
+    document.getElementById('employee-dropdown').appendChild(addButton);
+  }
+
+  function createEmployeeDropdown() {
+    const select = document.createElement('select');
+    select.id = 'employee';
+
+    const employees = ['권민석', '김동우', '김민재', '김서진', '김언석', '김현민', '박민제', '방서연', '원성탁'];
+
+    employees.forEach(employee => {
+      const option = document.createElement('option');
+      option.value = employee;
+      option.textContent = employee;
+      select.appendChild(option);
+    });
+
+    return select;
+  }
+
+  function createVacationTypeDropdown() {
+    const select = document.createElement('select');
+    select.id = 'vacationType';
+
+    const vacationTypes = ['연차', '공가', '병가', '오전 연차', '오후 연차', '오전 병가', '오후 병가'];
+
+    vacationTypes.forEach(vacationType => {
+      const option = document.createElement('option');
+      option.value = vacationType;
+      option.textContent = vacationType;
+      select.appendChild(option);
+    });
+
+    return select;
+  }
+
+  function addVacationWithDropdown(date, employeeDropdown, vacationTypeDropdown) {
+    const selectedEmployee = employeeDropdown.value;
+    const selectedVacationType = vacationTypeDropdown.value;
+    const dateString = date.toISOString().split('T')[0];
+    const vacations = getVacationData(date);
+    vacations.push({ employee: selectedEmployee, type: selectedVacationType });
+    localStorage.setItem(dateString, JSON.stringify(vacations));
+    location.reload();
+  }
+
+  function deleteVacation(date, index) {
+    const confirmDelete = confirm('이 휴가를 삭제하시겠습니까?');
+    if (confirmDelete) {
+      const vacations = getVacationData(date);
+      vacations.splice(index, 1);
+      const dateString = date.toISOString().split('T')[0];
+      localStorage.setItem(dateString, JSON.stringify(vacations));
+      location.reload();
+    }
+  }
+
+  function getVacationData(date) {
+    const dateString = date.toISOString().split('T')[0];
+    const storedData = localStorage.getItem(dateString);
+    return storedData ? JSON.parse(storedData) : [];
+  }
+
+  function updateHeader() {
+    document.getElementById('month-year').textContent = `${currentYear}년 ${String(currentMonth + 1).padStart(2, '0')}월`;
+  }
+
+  function prevMonth() {
+    if (currentMonth === 0) {
+      currentYear--;
+      currentMonth = 11;
+    } else {
+      currentMonth--;
+    }
+    updateCalendar();
+  }
+
+  function nextMonth() {
+    if (currentMonth === 11) {
+      currentYear++;
+      currentMonth = 0;
+    } else {
+      currentMonth++;
+    }
+    updateCalendar();
+  }
+
+  function updateCalendar() {
+    updateHeader();
+    createCalendar(currentYear, currentMonth);
+  }
+
+  const currentDate = new Date();
+  currentYear = currentDate.getFullYear();
+  currentMonth = currentDate.getMonth();
+  updateCalendar();
+</script>
+
+</body>
+</html>
